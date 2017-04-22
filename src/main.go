@@ -12,7 +12,7 @@ import (
 	"github.com/mamoroom/echo-mvc/src/lib/custom_validator"
 	"github.com/mamoroom/echo-mvc/src/lib/util"
 	"github.com/mamoroom/echo-mvc/src/router"
-	"github.com/mamoroom/echo-mvc/src/router/handler"
+	_ "github.com/mamoroom/echo-mvc/src/router/handler"
 
 	_ "fmt"
 	_ "os"
@@ -29,7 +29,7 @@ func main() {
 	// Res Header //
 	//e.Use(middleware.RequestID())
 	e.Use(middleware.Secure())
-	e.Use(handler.CSRF())
+	//e.Use(handler.CSRF())
 
 	e.Use(middleware.Gzip())
 
