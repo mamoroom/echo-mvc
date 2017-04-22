@@ -98,6 +98,7 @@ func (res *ResJwt) SetSessionUser(user_model *models.UserModel) error {
 	res.User.Entity.IsFirstGachaDone = user_model.GetUserEntity().IsFirstGachaDone
 	res.User.Entity.IsNotificationsOn = user_model.GetUserEntity().IsNotificationsOn
 	res.User.Entity.SeqLoginCnt = user_model.GetUserEntity().SeqLoginCnt
+	res.User.Entity.UpdatedAt = user_model.GetUserEntity().UpdatedAt
 	res.User.LoginType = user_model.GetUserEntity().GetLoginType()
 	switch res.User.LoginType {
 	case "guest":
