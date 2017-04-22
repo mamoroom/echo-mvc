@@ -1,11 +1,12 @@
 package oauth
 
+/*
 import (
 	"github.com/labstack/echo"
 
+	_ "github.com/mamoroom/echo-mvc/src/lib/util"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/openidConnect"
-	_ "github.com/mamoroom/echo-mvc/src/lib/util"
 
 	"errors"
 	_ "fmt"
@@ -68,3 +69,4 @@ func get_pkce_params(c echo.Context) (map[string]string, error) {
 
 	return params, nil
 }
+*/
