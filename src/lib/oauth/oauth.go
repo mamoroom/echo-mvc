@@ -46,7 +46,7 @@ func GetAuthURL(c echo.Context) (string, error) {
 		return "", err
 	}
 
-	err = store_in_session(providerName, sess.Marshal(), c)
+	err = store_oauth_cookie_in_session(providerName, sess.Marshal(), c)
 
 	if err != nil {
 		return "", err
@@ -98,13 +98,26 @@ func CompleteUserAuth(c echo.Context) (goth.User, error) {
 		return goth.User{}, err
 	}
 
-	err = store_in_session(providerName, sess.Marshal(), c)
+	err = store_oauth_cookie_in_session(providerName, sess.Marshal(), c)
 
 	if err != nil {
 		return goth.User{}, err
 	}
 
 	return provider.FetchUser(sess)
+}
+
+// Logout invalidates a user session.
+func Logout(c echo.Context) error {
+
+	providerName, err := get_provider_name(c)
+	if err != nil {
+		return err
+	}
+	session := sessions.Default(c)
+	session.Delete(providerName)
+	session.Save()
+	return nil
 }
 
 func get_provider_name(c echo.Context) (string, error) {
@@ -142,7 +155,7 @@ func set_state(c echo.Context) string {
 		return state
 	}*/
 	token := util.GenerateBase32RandomKey(20)
-	err := store_in_session("state", token, c)
+	err := store_oauth_cookie_in_session("state", token, c)
 	if err != nil {
 		return ""
 	}
@@ -157,7 +170,7 @@ func get_state(c echo.Context) string {
 	return c.QueryParam("state")
 }
 
-func store_in_session(key string, value string, c echo.Context) error {
+func store_oauth_cookie_in_session(key string, value string, c echo.Context) error {
 	session := sessions.Default(c)
 	session.Options(sessions.Options{
 		Path:     conf.Oauth.Cookie.Path,
@@ -166,6 +179,10 @@ func store_in_session(key string, value string, c echo.Context) error {
 		Secure:   conf.Oauth.Cookie.Secure,
 		HttpOnly: conf.Oauth.Cookie.HttpOnly,
 	})
+	return store_in_session(key, value, session)
+}
+
+func store_in_session(key string, value interface{}, session sessions.Session) error {
 	session.Set(key, value)
 	return session.Save()
 }

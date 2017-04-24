@@ -65,7 +65,22 @@ func (u *UserModel) FindUserByAuth(auth_provider string, auth_account_id string)
 	return nil
 }
 
-func (u *UserModel) UpdateAuthByUserId(provider string, account_id string, access_token string, refresh_token string, expires_at time.Time) (int64, error) {
+func (u *UserModel) DeleteAuth() (int64, error) {
+	if u.IsUserEntityNil() || u.IsUserEntityEmpty() {
+		panic("Must set user entity at first")
+	}
+	u.Dbh.SetNullable(u.user.GetLogoutNullableCols())
+	return u.UpdateAuth("", "", "", "", time.Time{})
+}
+
+func (u *UserModel) DeleteChatAuth() (int64, error) {
+	if u.IsUserEntityNil() || u.IsUserEntityEmpty() {
+		panic("Must set user entity at first")
+	}
+	return u.UpdateTwitterAuth("", "", "", "")
+}
+
+func (u *UserModel) UpdateAuth(provider string, account_id string, access_token string, refresh_token string, expires_at time.Time) (int64, error) {
 	if u.IsUserEntityNil() || u.IsUserEntityEmpty() {
 		panic("Must set user entity at first")
 	}
@@ -88,7 +103,7 @@ func (u *UserModel) UpdateAuthByUserId(provider string, account_id string, acces
 	return rows, nil
 }
 
-func (u *UserModel) UpdateTwitterAuthByUserId(twitter_user_id string, twitter_access_token string, twitter_access_token_secret string, twitter_avatar_url string) (int64, error) {
+func (u *UserModel) UpdateTwitterAuth(twitter_user_id string, twitter_access_token string, twitter_access_token_secret string, twitter_avatar_url string) (int64, error) {
 	if u.IsUserEntityNil() || u.IsUserEntityEmpty() {
 		panic("Must set user entity at first")
 	}
@@ -142,7 +157,7 @@ func (u *UserModel) InsertByAuth(lang string, provider string, account_id string
 		AuthRefreshToken: refresh_token,
 		AuthExpiresAt:    expires_at,
 	}
-	u.Dbh.SetNullable(_user.GetNullableCols())
+	u.Dbh.SetNullable(_user.GetInitNullableCols())
 	rows, err := u.Dbh.Handle().Insert(&_user)
 	if err != nil {
 		return 0, err
@@ -159,7 +174,7 @@ func (u *UserModel) Insert(lang string) (int64, error) {
 		Name: "",
 		Lang: lang,
 	}
-	u.Dbh.SetNullable(_user.GetNullableCols())
+	u.Dbh.SetNullable(_user.GetInitNullableCols())
 	rows, err := u.Dbh.Handle().Insert(&_user)
 	if err != nil {
 		return 0, err

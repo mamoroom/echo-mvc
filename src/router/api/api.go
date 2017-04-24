@@ -39,11 +39,13 @@ func Init(e *echo.Echo) {
 		w_jwt.GET("/api/nazo", NazoHandler)
 		w_jwt.GET("/api/chat", ChatHandler)
 		w_jwt.POST("/api/opening", OpeningHandler)
+		w_jwt.GET(conf.Oauth.Login.CallbackUri+":provider/logout", LoginAuthLogoutHandler)
 
 		//[todo] 特別処理: CookieのMaxLength超えてしまうのでここだけ変える. バグならないかcheck...
 		w_jwt.Use(sessions.Sessions(conf.Oauth.Chat.Session.CookieName, sessions.NewCookieStore([]byte(conf.Oauth.Chat.Session.SecretKey))))
 		w_jwt.GET(conf.Oauth.Chat.CallbackUri+":provider", ChatAuthHandler)
-
+		w_jwt.GET(conf.Oauth.Chat.CallbackUri+":provider/callback", ChatAuthCallbackHandler)
+		w_jwt.GET(conf.Oauth.Chat.CallbackUri+":provider/logout", ChatAuthLogoutHandler)
 	}
 
 	//ByPass Group
@@ -56,10 +58,6 @@ func Init(e *echo.Echo) {
 		w_bypass.POST("/api/login/guest", LoginGuestHandler)
 		w_bypass.GET(conf.Oauth.Login.CallbackUri+":provider", LoginAuthHandler)
 		w_bypass.GET(conf.Oauth.Login.CallbackUri+":provider/callback", LoginAuthCallbackHandler)
-
-		//[todo] 特別処理: CookieのMaxLength超えてしまうのでここだけ変える. バグならないかcheck...
-		w_bypass.Use(sessions.Sessions(conf.Oauth.Chat.Session.CookieName, sessions.NewCookieStore([]byte(conf.Oauth.Chat.Session.SecretKey))))
-		w_bypass.GET(conf.Oauth.Chat.CallbackUri+":provider/callback", ChatAuthCallback)
 	}
 }
 

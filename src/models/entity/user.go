@@ -15,7 +15,7 @@ type User struct {
 	AuthAccessToken          string    `json:"auth_access_token" xorm:"notnull default ''"`
 	AuthRefreshToken         string    `json:"auth_refresh_token" xorm:"notnull default ''"`
 	AuthExpiresAt            time.Time `json:"expires_at" xorm:"utc"`
-	TwitterUserId            string    `json:"twitter_user_id" xorm:"unique(twitter)"`
+	TwitterUserId            string    `json:"twitter_user_id" xorm:"notnull default ''"`
 	TwitterAccessToken       string    `json:"twitter_access_token" xorm:"notnull default ''"`
 	TwitterAccessTokenSecret string    `json:"twitter_access_token_secret" xorm:"notnull default ''"`
 	TwitterAvatarUrl         string    `json:"twitter_avater_url" xorm:"notnull default ''"`
@@ -27,8 +27,12 @@ type User struct {
 	UpdatedAt                time.Time `json:"updated_at" xorm:"updated utc"`
 }
 
-func (u User) GetNullableCols() []string {
-	return []string{"auth_provider", "auth_account_id", "twitter_user_id"}
+func (u User) GetInitNullableCols() []string {
+	return []string{"auth_provider", "auth_account_id"}
+}
+
+func (u User) GetLogoutNullableCols() []string {
+	return []string{"auth_provider", "auth_account_id"}
 }
 
 func (u *User) IsAuthedUser() bool {

@@ -15,7 +15,7 @@ import (
 var (
 	migrations = []*migrate.Migration{
 		{
-			ID: "20170419-6",
+			ID: "20170424-1",
 			Migrate: func(tx *xorm.Engine) error {
 				return tx.Sync2(&entity.User{})
 			},

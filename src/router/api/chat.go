@@ -5,7 +5,7 @@ import (
 	"github.com/markbates/goth"
 
 	"github.com/mamoroom/echo-mvc/src/lib/oauth"
-	"github.com/mamoroom/echo-mvc/src/lib/util"
+	_ "github.com/mamoroom/echo-mvc/src/lib/util"
 	"github.com/mamoroom/echo-mvc/src/models"
 	"github.com/mamoroom/echo-mvc/src/router/handler"
 	"github.com/mamoroom/echo-mvc/src/view/res_json"
@@ -16,8 +16,8 @@ import (
 
 type (
 	Chat struct {
-		IsTwLoggedIn bool   `json:"is_tw_logged_in"`
-		TwLoginLink  string `json:"tw_login_link"`
+		IsTwLoggedIn bool `json:"is_tw_logged_in"`
+		//TwLoginLink  string `json:"tw_login_link"`
 	}
 )
 
@@ -39,7 +39,7 @@ func ChatHandler(c echo.Context) error {
 	}
 
 	if !res_jwt.Data.SessionUserModel.GetUserEntity().HasTwitterUserId() {
-		res_chat.Chat.TwLoginLink = util.GetBaseUrl() + "/api/chat/auth/twitter-chat"
+		//res_chat.Chat.TwLoginLink = util.GetBaseUrl() + "/api/chat/auth/twitter-chat"
 	} else {
 		res_chat.Chat.IsTwLoggedIn = true
 	}
@@ -47,10 +47,7 @@ func ChatHandler(c echo.Context) error {
 }
 
 func ChatAuthHandler(c echo.Context) error {
-	res_jwt, ok := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
-	if !ok {
-		res_jwt = handler.NewResJwt()
-	}
+	res_jwt, _ := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
 	res_jwt.Data.Debug.Func = "ChatAuthHandler"
 
 	// auth済
@@ -66,12 +63,9 @@ func ChatAuthHandler(c echo.Context) error {
 	return res_json.Redirect(c, url)
 }
 
-func ChatAuthCallback(c echo.Context) error {
-	res_jwt, ok := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
-	if !ok {
-		res_jwt = handler.NewResJwt()
-	}
-	res_jwt.Data.Debug.Func = "ChatAuthCallback"
+func ChatAuthCallbackHandler(c echo.Context) error {
+	res_jwt, _ := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
+	res_jwt.Data.Debug.Func = "ChatAuthCallbackHandler"
 
 	gothUser, err := oauth.CompleteUserAuth(c)
 	if err != nil {
@@ -79,6 +73,51 @@ func ChatAuthCallback(c echo.Context) error {
 	}
 
 	return _handle_chat_auth(c, res_jwt, gothUser)
+}
+
+func ChatAuthLogoutHandler(c echo.Context) error {
+	res_jwt, _ := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
+	res_jwt.Data.Debug.Func = "ChatAuthLogoutHandler"
+	if !res_jwt.Data.SessionUserModel.GetUserEntity().HasTwitterUserId() {
+		return res_json.Failed(c, "AlreadyLogoutFailure")
+	}
+
+	////// UserW //////
+	user_w := models.NewUserW()
+	user_w.Dbh.SetNewSession()
+	rollback_func := func() error { return user_w.Dbh.Rollback() }
+	commit_func := func() error { return user_w.Dbh.Commit() }
+	defer user_w.Dbh.Close()
+	defer fmt.Println("End Transaction.")
+
+	user_w.Dbh.ForUpdate()
+	if err := user_w.FindUserById(res_jwt.Data.SessionUserModel.GetUserEntity().Id); err != nil {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DatabaseAccessError", err, "Could not get user data from master DB")
+	}
+	rows_affected, err := user_w.DeleteChatAuth()
+	if err != nil {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DbTransactionError", err, "Could not update empty value auth data")
+	}
+	if rows_affected == 0 {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DbTransactionError", errors.New("Rows afected = 0 on update auth data"), "Could not update user data")
+	}
+	handle_rollback_or_commit(commit_func)
+	///////////////////
+
+	// Cookieを更新
+	err = oauth.Logout(c)
+	if err != nil {
+		return res_json.ErrorInternalServer(c, "CookieError", err, "Could not delete cookie")
+
+	}
+	/*
+		res_jwt.SetSessionUser(user_model)
+		c.Set(handler.GetResJwtContextKey(), res_jwt)
+	*/
+	return res_json.Succeeded(c, nil)
 }
 
 func _handle_chat_auth(c echo.Context, res_jwt *handler.ResJwt, gothUser goth.User) error {
@@ -116,7 +155,7 @@ func _handle_chat_auth(c echo.Context, res_jwt *handler.ResJwt, gothUser goth.Us
 		handle_rollback_or_commit(rollback_func)
 		return res_json.ErrorInternalServer(c, "DatabaseAccessError", err, "Could not get user data from master DB")
 	}
-	rows_affected, err := user_w.UpdateTwitterAuthByUserId(gothUser.UserID, gothUser.AccessToken, gothUser.AccessTokenSecret, gothUser.AvatarURL)
+	rows_affected, err := user_w.UpdateTwitterAuth(gothUser.UserID, gothUser.AccessToken, gothUser.AccessTokenSecret, gothUser.AvatarURL)
 	if err != nil {
 		handle_rollback_or_commit(rollback_func)
 		return res_json.ErrorInternalServer(c, "DatabaseAccessError", err, "Could not update user data")

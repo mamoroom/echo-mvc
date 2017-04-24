@@ -57,7 +57,7 @@ func LoginGuestHandler(c echo.Context) error {
 	// ユーザー選択言語を取得
 	lang, err := cookie.GetCookie(c, conf.Register.Cookie.Name)
 	if err != nil {
-		return res_json.ErrorBadRequest(c, "NoCookieError", err, "Cannot read register cookie")
+		return res_json.ErrorBadRequest(c, "NoCookieError", err, "Cannot read lang register cookie")
 	}
 
 	////// UserW //////
@@ -128,6 +128,52 @@ func LoginAuthCallbackHandler(c echo.Context) error {
 	return _handle_login_auth(c, res_jwt, gothUser)
 }
 
+func LoginAuthLogoutHandler(c echo.Context) error {
+	//必須
+	res_jwt, _ := c.Get(handler.GetResJwtContextKey()).(*handler.ResJwt)
+	res_jwt.Data.Debug.Func = "LoginAuthLogoutHandler"
+	if !res_jwt.Data.SessionUserModel.GetUserEntity().IsAuthedUser() {
+		return res_json.Failed(c, "AlreadyLogoutFailure")
+	}
+
+	////// UserW //////
+	user_w := models.NewUserW()
+	user_w.Dbh.SetNewSession()
+	rollback_func := func() error { return user_w.Dbh.Rollback() }
+	commit_func := func() error { return user_w.Dbh.Commit() }
+	defer user_w.Dbh.Close()
+	defer fmt.Println("End Transaction.")
+
+	user_w.Dbh.ForUpdate()
+	if err := user_w.FindUserById(res_jwt.Data.SessionUserModel.GetUserEntity().Id); err != nil {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DatabaseAccessError", err, "Could not get user data from master DB")
+	}
+	rows_affected, err := user_w.DeleteAuth()
+	if err != nil {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DbTransactionError", err, "Could not update empty value auth data")
+	}
+	if rows_affected == 0 {
+		handle_rollback_or_commit(rollback_func)
+		return res_json.ErrorInternalServer(c, "DbTransactionError", errors.New("Rows afected = 0 on update auth data"), "Could not update user data")
+	}
+	handle_rollback_or_commit(commit_func)
+	///////////////////
+
+	// Cookieを更新
+	err = oauth.Logout(c)
+	if err != nil {
+		return res_json.ErrorInternalServer(c, "CookieError", err, "Could not delete cookie")
+
+	}
+	/*
+		res_jwt.SetSessionUser(user_model)
+		c.Set(handler.GetResJwtContextKey(), res_jwt)
+	*/
+	return res_json.Succeeded(c, nil)
+}
+
 func _handle_login_auth(c echo.Context, res_jwt *handler.ResJwt, gothUser goth.User) error {
 
 	////// OAuthデータ確認 ///////
@@ -180,7 +226,7 @@ func _handle_login_auth(c echo.Context, res_jwt *handler.ResJwt, gothUser goth.U
 			handle_rollback_or_commit(rollback_func)
 			return res_json.ErrorInternalServer(c, "DatabaseAccessError", err, "Could not get user data from master DB")
 		}
-		rows_affected, err := user_w.UpdateAuthByUserId(util.GetOauthProviderPrefix(gothUser.Provider), gothUser.UserID, gothUser.AccessToken, gothUser.RefreshToken, gothUser.ExpiresAt)
+		rows_affected, err := user_w.UpdateAuth(util.GetOauthProviderPrefix(gothUser.Provider), gothUser.UserID, gothUser.AccessToken, gothUser.RefreshToken, gothUser.ExpiresAt)
 		if err != nil {
 			handle_rollback_or_commit(rollback_func)
 			return res_json.ErrorInternalServer(c, "DbTransactionError", err, "Could not insert user data")
@@ -197,7 +243,7 @@ func _handle_login_auth(c echo.Context, res_jwt *handler.ResJwt, gothUser goth.U
 	// ユーザー選択言語を取得
 	lang, err := cookie.GetCookie(c, conf.Register.Cookie.Name)
 	if err != nil {
-		return res_json.ErrorBadRequest(c, "NoCookieError", err, "Cannot read register cookie")
+		return res_json.ErrorBadRequest(c, "NoCookieError", err, "Cannot read lang register cookie")
 	}
 
 	rows_affected, err := user_w.InsertByAuth(lang, util.GetOauthProviderPrefix(gothUser.Provider), gothUser.UserID, gothUser.AccessToken, gothUser.RefreshToken, gothUser.ExpiresAt)
