@@ -1,0 +1,31 @@
+{{define "share"}}<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>{{.Title}}</title>
+    <meta name="description" content="{{.Description}}">
+    <meta property="og:type" content="{{.OgType}}">
+    <meta property="og:image" content="{{.OgImage}}">
+    <meta property="og:title" content="{{.OgTitle}}">
+    <meta property="og:description" content="{{.OgDescription}}">
+    <meta property="og:site_name" content="{{.OgSiteName}}">
+    <!--meta property="og:url" content="{{.OgUrl}}"-->
+    <meta property="og:image:width" content="{{.OgImageWidth}}">
+    <meta property="og:image:height" content="{{.OgImageHeight}}">
+    <meta name="twitter:card" content="{{.TwCard}}" />
+    <meta name="twitter:title" content="{{.TwTitle}}" />
+    <meta name="twitter:description" content="{{.TwDescription}}" />
+    <meta name="twitter:image" content="{{.TwImage}}" />
+    <meta name="twitter:url" content="{{.TwUrl}}" />
+    <!--link rel="canonical" href="{{.Canonical}}"-->
+    <link rel="shortcut icon" href="{{.ShortcutIcon}}">
+  </head>
+  <body>
+  <header>
+    <title>{{.OgTitle}}</title>
+  </header>
+  <div>
+    <img src="{{.OgImage}}" />
+  </div>
+  </body>
+</html>{{end}}
